@@ -1,0 +1,364 @@
+/* ============================================================
+   Jarvisplitwise — iOS (Apple HIG) 設計語言
+   系統色票 / SF 字體 / inset-grouped 清單 / 大標題 / 底部 Tab Bar
+   ============================================================ */
+:root{
+  --blue:#007aff; --blue-press:#0062cc;
+  --green:#34c759; --red:#ff3b30; --orange:#ff9500;
+  --bg:#eef0f4;                 /* 彩色 mesh 底色 (霜面玻璃襯底) */
+  --card:rgba(255,255,255,.52); /* 霜面玻璃卡片 (半透明, 讓彩色背景透出折射) */
+  --card-press:rgba(235,235,242,.85); /* cell 按下 */
+  --label:#000000;
+  --label-2:rgba(60,60,67,.6);  /* secondaryLabel */
+  --label-3:rgba(60,60,67,.3);  /* tertiaryLabel */
+  --sep:rgba(60,60,67,.29);     /* separator */
+  --nav-bg:rgba(249,249,249,.82);
+  --fill:rgba(120,120,128,.12); /* 輸入框底/segmented 槽 */
+  --fill-2:rgba(120,120,128,.16);
+  --seg-thumb:#ffffff;          /* segmented control 選中滑塊 */
+  --scrim:rgba(0,0,0,.4);
+  --radius:12px; --radius-lg:16px; --r-pill:999px;
+  --ease:cubic-bezier(.32,.72,0,1);
+  --font:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display','Segoe UI','PingFang TC','Microsoft JhengHei','Noto Sans TC',system-ui,sans-serif;
+  --tabbar-h:66px;
+  /* Liquid Glass (iOS 26) — 控制元件用 */
+  --glass-bg:rgba(255,255,255,.55);
+  --glass-bg-strong:rgba(255,255,255,.72);
+  --glass-edge:rgba(255,255,255,.75);
+  --glass-hi:rgba(255,255,255,.95);
+  --glass-lo:rgba(0,0,0,.06);
+  --glass-shadow:0 10px 30px rgba(0,0,0,.13),0 2px 8px rgba(0,0,0,.06);
+  --glass-blur:saturate(180%) blur(22px);
+  --blue-glass:linear-gradient(155deg,rgba(64,156,255,.82),rgba(10,120,255,.66));
+  --btn-glass:rgba(0,122,255,.82);   /* glassProminent: 半透明 tint, 靠背景折射 */
+  --amb-1:rgba(10,120,255,.10);   /* 環境光斑, 給玻璃折射用 */
+  --amb-2:rgba(52,199,89,.08);
+  --amb-3:rgba(255,149,0,.07);
+}
+:root[data-theme="dark"]{
+    --blue:#0a84ff; --blue-press:#3a9bff;
+    --green:#30d158; --red:#ff453a; --orange:#ff9f0a;
+    --bg:#06070a; --card:rgba(40,40,46,.46); --card-press:rgba(70,70,78,.7);
+    --label:#ffffff; --label-2:rgba(235,235,245,.6); --label-3:rgba(235,235,245,.3);
+    --sep:rgba(84,84,88,.65);
+    --nav-bg:rgba(28,28,30,.8);
+    --fill:rgba(120,120,128,.24); --fill-2:rgba(120,120,128,.32);
+    --seg-thumb:#636366;
+    --scrim:rgba(0,0,0,.5);
+    --glass-bg:rgba(50,50,54,.52);
+    --glass-bg-strong:rgba(44,44,48,.72);
+    --glass-edge:rgba(255,255,255,.16);
+    --glass-hi:rgba(255,255,255,.22);
+    --glass-lo:rgba(0,0,0,.3);
+    --glass-shadow:0 12px 34px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.4);
+    --blue-glass:linear-gradient(155deg,rgba(40,150,255,.78),rgba(10,132,255,.6));
+    --btn-glass:rgba(10,132,255,.80);
+    --amb-1:rgba(10,132,255,.16); --amb-2:rgba(48,209,88,.12); --amb-3:rgba(255,159,10,.10);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{overflow-x:hidden;background:var(--bg)}   /* 系統純平灰, 不加彩色光暈 */
+/* iOS 26 scroll-edge: 內容在底部浮動 Tab Bar 下方被「材質模糊」(非淡出純色) */
+body::after{
+  content:"";position:fixed;left:0;right:0;bottom:0;height:120px;z-index:35;pointer-events:none;
+  -webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 80%);
+          mask-image:linear-gradient(180deg,transparent 0,#000 80%);
+}
+body{
+  font-family:var(--font);color:var(--label);
+  /* 彩色 mesh「桌布」: 玻璃卡片/chrome 靠它折射出顏色 (像 iOS 控制中心) */
+  background:
+    radial-gradient(42% 32% at 8% 4%,   rgba(10,132,255,.65), transparent 60%),
+    radial-gradient(38% 30% at 94% 8%,  rgba(175,82,222,.58), transparent 60%),
+    radial-gradient(44% 36% at 90% 82%, rgba(255,55,95,.5),   transparent 62%),
+    radial-gradient(48% 40% at 8% 94%,  rgba(48,209,88,.5),   transparent 62%),
+    radial-gradient(40% 34% at 54% 56%, rgba(255,159,10,.42), transparent 60%),
+    var(--bg);
+  background-attachment:fixed;
+  line-height:1.45;-webkit-font-smoothing:antialiased;
+  font-size:17px;                 /* iOS body */
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tnum{font-variant-numeric:tabular-nums}
+svg.ic{width:24px;height:24px;display:block;flex:none;
+  fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+svg.ic.fill{fill:currentColor;stroke:none}
+.ic-sm{width:20px;height:20px}
+
+input,select,button,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none;padding:0;color:var(--label)}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px;border-radius:6px}
+
+#app{max-width:600px;margin:0 auto}
+.screen{min-height:100dvh;padding:0 0 calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 24px)}
+.screen.no-tabbar{padding-bottom:40px}
+
+/* ---------- 導覽列 (大標題) ---------- */
+.navbar{
+  position:sticky;top:0;z-index:30;
+  padding:0 8px;padding-top:env(safe-area-inset-top);
+  display:flex;align-items:center;gap:2px;min-height:44px;
+  background:transparent;transition:background .25s var(--ease);
+}
+.navbar.scrolled{
+  background:var(--nav-bg);backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  box-shadow:0 .5px 0 var(--sep);
+}
+.navbar .nav-btn{
+  display:inline-flex;align-items:center;gap:1px;color:var(--blue);
+  font-size:17px;min-height:44px;padding:0 6px;border-radius:8px;
+  transition:opacity .15s;
+}
+.navbar .nav-btn:active{opacity:.4}
+.navbar .nav-btn.icon-only{padding:10px}
+.navbar .spacer{flex:1}
+.navbar .nav-title{
+  font-size:17px;font-weight:600;opacity:0;transition:opacity .25s var(--ease);
+  max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;
+}
+.navbar.scrolled .nav-title{opacity:1}
+.large-title{
+  padding:4px 20px 8px;font-size:34px;line-height:1.1;font-weight:700;
+  letter-spacing:.37px;
+}
+/* 大標題下的代碼副標 (HIG: 大標題只放純文字, 代碼移到此處) */
+.subtitle{
+  display:flex;align-items:center;gap:6px;margin:2px 20px 0;padding:4px 0;
+  color:var(--label-2);font-size:13px;font-weight:400;
+}
+.subtitle .ic{color:var(--blue)}
+.subtitle:active{opacity:.5}
+
+/* ---------- inset-grouped 清單 ---------- */
+.group{margin:18px 16px 0}
+.group-hdr{
+  font-size:13px;color:var(--label-2);text-transform:uppercase;letter-spacing:.5px;
+  padding:0 16px 7px;font-weight:500;
+}
+.group-ftr{font-size:13px;color:var(--label-2);padding:7px 16px 0;line-height:1.35}
+.card{
+  background:var(--card);border-radius:var(--radius-lg);overflow:hidden;
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  border:.5px solid var(--glass-edge);
+  box-shadow:inset 0 1px .5px var(--glass-hi),0 6px 22px rgba(0,0,0,.10);
+}
+/* Chromium 限定: SVG feDisplacementMap 鏡頭折射 (Safari/Firefox 自動降級為純霜面玻璃) */
+html.fx-displace .card,
+html.fx-displace .btn,
+html.fx-displace .btn.tinted,
+html.fx-displace .tabbar,
+html.fx-displace .sheet{
+  -webkit-backdrop-filter:url(#liquid-glass) saturate(180%) blur(6px);
+  backdrop-filter:url(#liquid-glass) saturate(180%) blur(6px);
+}
+.cell{
+  display:flex;align-items:center;gap:12px;min-height:48px;
+  padding:11px 16px;position:relative;background:transparent;
+  transition:background .12s;
+}
+.cell.tap{cursor:pointer}
+.cell.tap:active{background:var(--card-press)}
+/* inset 分隔線 (左側對齊內容, 非滿版) */
+.cell:not(:last-child)::after{
+  content:"";position:absolute;left:16px;right:0;bottom:0;height:.5px;background:var(--sep);
+}
+.cell.inset-line:not(:last-child)::after{left:60px}
+.cell .lead{flex:none}
+.cell .main{flex:1;min-width:0}
+.cell .title{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell .sub{font-size:13px;color:var(--label-2);margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell .trail{display:flex;align-items:center;gap:8px;flex:none;color:var(--label-2)}
+.cell .val{font-size:17px;color:var(--label-2)}
+.cell .chev{color:var(--label-3)}
+.empty-cell{padding:22px 16px;text-align:center;color:var(--label-2);font-size:15px}
+
+/* 頭像 */
+.avatar{
+  width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;
+  color:#fff;font-weight:600;font-size:15px;
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.08);
+}
+.avatar.sm{width:28px;height:28px;font-size:12px}
+
+/* ---------- 按鈕 ---------- */
+/* iOS 26 .glassProminent: 半透明 tint 玻璃, 靠背景折射 (非實心、非果凍漸層) */
+.btn{
+  position:relative;isolation:isolate;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;min-height:52px;padding:0 22px;border-radius:var(--r-pill);
+  background:var(--btn-glass);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
+  color:#fff;font-size:17px;font-weight:600;letter-spacing:.2px;
+  border:.5px solid rgba(255,255,255,.4);
+  box-shadow:
+    inset 0 1px .5px rgba(255,255,255,.5),     /* 頂緣 specular 細線 (非半身高光) */
+    0 4px 16px rgba(0,0,0,.12);                /* 中性柔影, 非藍色光暈 */
+  transition:opacity .15s,transform .14s var(--ease);
+}
+.btn:active{opacity:.86}   /* 縮放交給 GSAP 彈簧 */
+/* 次要鈕: 半透明玻璃 + 藍字 */
+.btn.tinted{
+  background:var(--glass-bg-strong);color:var(--blue);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  border:.5px solid var(--glass-edge);
+  box-shadow:inset 0 1px .5px var(--glass-hi),var(--glass-shadow);
+}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.btn-wrap{padding:18px 16px 0}
+
+/* 列內小動作鈕 */
+.cellbtn{color:var(--blue);font-size:17px;padding:8px;min-width:44px;min-height:44px;
+  display:grid;place-items:center;border-radius:8px}
+.cellbtn:active{opacity:.4}
+.cellbtn.danger{color:var(--red)}
+.minus{width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;
+  display:grid;place-items:center}
+.minus svg{width:16px;height:16px;stroke-width:2.4}
+
+/* 金額著色 */
+.pos{color:var(--green)}
+.neg{color:var(--red)}
+.amt{font-size:17px;font-weight:600}
+
+/* ---------- 招牌: 淨額分歧長條 (iOS 質感) ---------- */
+.balrow{padding:12px 16px;position:relative}
+.balrow:not(:last-child)::after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:.5px;background:var(--sep)}
+.balrow .top{display:flex;align-items:center;gap:11px;margin-bottom:9px}
+.balrow .nm{flex:1;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.balrow .net{font-size:16px;font-weight:600}
+.bartrack{position:relative;height:8px;border-radius:4px;background:var(--fill);overflow:hidden}
+.bartrack .mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--label-3)}
+.barfill{position:absolute;top:0;bottom:0;border-radius:4px;will-change:transform}
+.barfill.pos{left:50%;background:var(--green)}
+.barfill.neg{right:50%;background:var(--red)}
+
+/* 全部結清 */
+.allclear{text-align:center;padding:30px 16px;color:var(--label-2);font-size:15px}
+.allclear .ok{width:54px;height:54px;border-radius:50%;background:var(--green);color:#fff;
+  display:grid;place-items:center;margin:0 auto 12px}
+.allclear .ok svg{width:30px;height:30px;stroke-width:2.6}
+
+/* ---------- 底部 Tab Bar ---------- */
+/* 浮動玻璃膠囊 Tab Bar (iOS 26) */
+.tabbar{
+  position:fixed;left:50%;transform:translateX(-50%);z-index:40;
+  bottom:calc(env(safe-area-inset-bottom) + 18px);
+  display:flex;align-items:center;gap:4px;
+  padding:6px;border-radius:var(--r-pill);max-width:calc(100% - 42px);
+  background:var(--glass-bg);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  border:.5px solid var(--glass-edge);
+  box-shadow:inset 0 1.5px .5px var(--glass-hi),inset 0 0 0 1px rgba(255,255,255,.08),var(--glass-shadow);
+  transition:padding .35s var(--ease),transform .35s var(--ease);
+}
+.tabitem{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  color:var(--label-2);font-size:11px;font-weight:550;letter-spacing:.1px;
+  padding:6px 18px;border-radius:var(--r-pill);min-width:60px;
+  transition:color .2s,background .25s var(--ease),transform .12s var(--ease);
+}
+.tabitem svg{width:26px;height:26px;stroke-width:1.8}
+.tabitem .ic-on{display:none}
+.tabitem.active .ic-out{display:none}
+.tabitem.active .ic-on{display:block}
+.tabitem.active{color:var(--blue);background:rgba(10,120,255,.14)}
+.tabitem:active{transform:scale(.9)}
+.tabitem span{max-height:16px;overflow:hidden;
+  transition:max-height .3s var(--ease),opacity .25s var(--ease),margin .3s var(--ease)}
+/* 向下捲動時收縮成精簡膠囊 */
+.tabbar.min .tabitem{padding:8px 14px}
+.tabbar.min .tabitem span{max-height:0;opacity:0;margin-top:-3px}
+
+/* ---------- 首頁 ---------- */
+.hero{text-align:center;padding:30px 24px 6px}
+.brandmark{width:72px;height:72px;margin:0 auto 16px;display:block;
+  border-radius:17px;box-shadow:0 8px 24px rgba(0,122,255,.28)}
+.hero h1{margin:0;font-size:30px;font-weight:700;letter-spacing:.37px}
+.hero .sub{color:var(--label-2);margin:6px 0 0;font-size:15px}
+
+/* 行內輸入 (grouped form) */
+.frow{display:flex;align-items:center;gap:12px;min-height:48px;padding:7px 16px;position:relative;background:transparent}
+.frow:not(:last-child)::after{content:"";position:absolute;left:16px;right:0;bottom:0;height:.5px;background:var(--sep)}
+.frow>.lbl{font-size:17px;flex:none;min-width:64px}
+.frow input,.frow select{
+  flex:1;border:none;background:none;outline:none;font-size:17px;text-align:right;
+  padding:8px 0;color:var(--label);min-width:0;
+}
+.frow select{text-align:right;text-align-last:right;direction:ltr;
+  -webkit-appearance:none;appearance:none;cursor:pointer;padding-right:18px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='16' viewBox='0 0 12 16'%3E%3Cpath fill='none' stroke='%238e8e93' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M3 6.5L6 3.5l3 3M3 9.5l3 3 3-3'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right center}
+.frow input::placeholder{color:var(--label-3)}
+/* 置中型輸入 (代碼) */
+.frow.center input{text-align:center;letter-spacing:3px;font-weight:600;font-size:20px}
+
+/* ---------- 底部彈出 sheet ---------- */
+.overlay{position:fixed;inset:0;background:var(--scrim);z-index:50;
+  display:flex;align-items:flex-end;justify-content:center;
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);}
+.sheet{
+  background:var(--glass-bg-strong);
+  -webkit-backdrop-filter:saturate(180%) blur(30px);backdrop-filter:saturate(180%) blur(30px);
+  width:100%;max-width:600px;border-top:1px solid var(--glass-edge);
+  border-radius:20px 20px 0 0;max-height:94vh;display:flex;flex-direction:column;
+  box-shadow:inset 0 1px 1px var(--glass-hi),0 -8px 40px rgba(0,0,0,.22);will-change:transform;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--label-3);margin:8px auto 2px;flex:none}
+.sheet-nav{display:flex;align-items:center;justify-content:space-between;padding:8px 16px 10px;flex:none}
+.sheet-nav .plain{color:var(--blue);font-size:17px;padding:8px;min-height:44px;display:flex;align-items:center}
+.sheet-nav .plain:active{opacity:.4}
+.sheet-nav .plain.strong{font-weight:600}
+.sheet-nav .plain[disabled]{color:var(--label-3);pointer-events:none}
+.sheet-title{font-size:17px;font-weight:600}
+.sheet-body{overflow:auto;padding:0 0 24px}
+
+/* segmented control (iOS) */
+.seg{display:flex;background:var(--fill);border-radius:9px;padding:2px;margin:0;gap:2px}
+.seg button{
+  flex:1;padding:7px 4px;border-radius:7px;font-size:13px;font-weight:500;color:var(--label);
+  transition:background .2s var(--ease),box-shadow .2s;
+}
+.seg button.on{background:var(--seg-thumb);
+  box-shadow:0 1px 3px rgba(0,0,0,.12),0 1px 1px rgba(0,0,0,.04);font-weight:600}
+.seg-wrap{padding:14px 16px 0}
+
+/* 分攤者列 */
+.part{display:flex;align-items:center;gap:12px;min-height:48px;padding:7px 16px;position:relative;background:transparent}
+.part:not(:last-child)::after{content:"";position:absolute;left:56px;right:0;bottom:0;height:.5px;background:var(--sep)}
+.part .pchk{width:24px;height:24px;flex:none;accent-color:var(--blue);margin:0;cursor:pointer}
+.part .nm{flex:1;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.part .pval{width:96px;flex:none;border:none;background:var(--fill);border-radius:8px;
+  padding:9px 12px;text-align:right;font-size:16px;outline:none;color:var(--label)}
+.part.off{opacity:.45}
+.part.off .pval{visibility:hidden}
+
+.hint{margin:12px 16px 0;font-size:13px;color:var(--label-2);min-height:1.2em}
+.hint.bad{color:var(--red)} .hint.good{color:var(--green)}
+
+/* badge (模式提示) */
+.modebadge{display:flex;align-items:center;gap:8px;justify-content:center;
+  margin:12px 16px 0;font-size:13px;color:var(--label-2)}
+.modebadge svg{width:16px;height:16px}
+.modebadge.cloud{color:var(--green)} .modebadge.local{color:var(--orange)}
+
+/* ---------- toast ---------- */
+#toast{position:fixed;left:50%;bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 24px);
+  transform:translateX(-50%) translateY(14px);
+  background:rgba(40,40,42,.96);color:#fff;padding:11px 20px;border-radius:999px;
+  font-size:15px;opacity:0;pointer-events:none;transition:.3s var(--ease);z-index:60;
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 8px 30px rgba(0,0,0,.3)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (min-width:600px){
+  .overlay{align-items:center}
+  .sheet{border-radius:14px;max-height:88vh}
+  .grabber{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important;transition:none !important}
+}
