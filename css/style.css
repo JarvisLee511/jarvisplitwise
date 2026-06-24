@@ -3,12 +3,14 @@
    系統色票 / SF 字體 / inset-grouped 清單 / 大標題 / 底部 Tab Bar
    ============================================================ */
 :root{
-  --blue:#007aff; --blue-press:#0062cc;
-  --green:#34c759; --red:#ff3b30; --orange:#ff9500;
-  --bg:#eef0f4;                 /* 彩色 mesh 底色 (霜面玻璃襯底) */
-  --card:rgba(255,255,255,.52); /* 霜面玻璃卡片 (半透明, 讓彩色背景透出折射) */
-  --card-press:rgba(235,235,242,.85); /* cell 按下 */
-  --label:#000000;
+  --blue:#2f6fed; --blue-press:#1d56c9;   /* 主色 (boarding 藍) */
+  --stamp:#e8512f;              /* 簽證/票根 印章色 (僅票根重點用) */
+  --green:#1f9d57; --red:#e0463a; --orange:#ff9500;
+  --bg:#e7ebf1;                 /* departure-board 冷灰底 (非彩虹) */
+  --card:#ffffff;               /* 票根紙面 (實心, 高可讀) */
+  --card-press:#eef1f6;         /* cell 按下 */
+  --label:#13213d;              /* 深海軍墨色 (非純黑) */
+  --mono:'SF Mono','JetBrains Mono','Roboto Mono',ui-monospace,'Cascadia Mono',Menlo,Consolas,monospace;
   --label-2:rgba(60,60,67,.6);  /* secondaryLabel */
   --label-3:rgba(60,60,67,.3);  /* tertiaryLabel */
   --sep:rgba(60,60,67,.29);     /* separator */
@@ -36,10 +38,11 @@
   --amb-3:rgba(255,149,0,.07);
 }
 :root[data-theme="dark"]{
-    --blue:#0a84ff; --blue-press:#3a9bff;
-    --green:#30d158; --red:#ff453a; --orange:#ff9f0a;
-    --bg:#06070a; --card:rgba(40,40,46,.46); --card-press:rgba(70,70,78,.7);
-    --label:#ffffff; --label-2:rgba(235,235,245,.6); --label-3:rgba(235,235,245,.3);
+    --blue:#5b8def; --blue-press:#7aa6f5;
+    --stamp:#ff6a47;
+    --green:#34d27b; --red:#ff5a4d; --orange:#ff9f0a;
+    --bg:#080b14; --card:#141b2d; --card-press:#1d2740;   /* 深海軍墨 + 票根紙面 */
+    --label:#eef1f7; --label-2:rgba(225,230,242,.62); --label-3:rgba(225,230,242,.34);
     --sep:rgba(84,84,88,.65);
     --nav-bg:rgba(28,28,30,.8);
     --fill:rgba(120,120,128,.24); --fill-2:rgba(120,120,128,.32);
@@ -68,13 +71,9 @@ body::after{
 }
 body{
   font-family:var(--font);color:var(--label);
-  /* 彩色 mesh「桌布」: 玻璃卡片/chrome 靠它折射出顏色 (像 iOS 控制中心) */
+  /* departure-board 微光 (單一主色, 克制) */
   background:
-    radial-gradient(42% 32% at 8% 4%,   rgba(10,132,255,.65), transparent 60%),
-    radial-gradient(38% 30% at 94% 8%,  rgba(175,82,222,.58), transparent 60%),
-    radial-gradient(44% 36% at 90% 82%, rgba(255,55,95,.5),   transparent 62%),
-    radial-gradient(48% 40% at 8% 94%,  rgba(48,209,88,.5),   transparent 62%),
-    radial-gradient(40% 34% at 54% 56%, rgba(255,159,10,.42), transparent 60%),
+    radial-gradient(90% 48% at 50% -12%, color-mix(in srgb, var(--blue) 14%, transparent), transparent 60%),
     var(--bg);
   background-attachment:fixed;
   line-height:1.45;-webkit-font-smoothing:antialiased;
@@ -132,27 +131,52 @@ button{cursor:pointer;border:none;background:none;padding:0;color:var(--label)}
 .subtitle .ic{color:var(--blue)}
 .subtitle:active{opacity:.5}
 
+/* ---------- 旅行識別: 登機證頭 + 票根撕口 ---------- */
+.eyebrow{font:600 11px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--blue)}
+.bpass{margin:12px 16px 4px;background:var(--card);border:.5px solid var(--sep);
+  border-radius:18px;overflow:hidden;position:relative;cursor:pointer;
+  box-shadow:0 1px 2px rgba(19,33,61,.05),0 14px 32px rgba(19,33,61,.09);
+  transition:transform .14s var(--ease),filter .15s}
+.bpass:active{filter:brightness(.985)}
+.bp-top{padding:15px 20px 13px}
+.bp-eyebrow{display:flex;align-items:center;justify-content:space-between;color:var(--blue)}
+.bp-eyebrow .e-l{display:flex;align-items:center;gap:7px}
+.bp-eyebrow .ic{width:17px;height:17px}
+.bp-cur{font:600 11px/1 var(--mono);letter-spacing:.12em;color:var(--label-3)}
+.bp-dest{font-size:30px;font-weight:750;letter-spacing:.2px;margin:9px 0 1px;line-height:1.06;
+  color:var(--label);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bp-route{font:600 12px/1 var(--mono);letter-spacing:.1em;color:var(--label-2)}
+/* 撕口: 虛線 + 兩側半圓缺口 (票根招牌) */
+.bp-perf{position:relative;height:0;margin:4px 18px;
+  border-top:2px dashed color-mix(in srgb, var(--label-2) 42%, transparent)}
+.bp-perf::before,.bp-perf::after{content:"";position:absolute;top:0;width:22px;height:22px;
+  border-radius:50%;background:var(--bg);transform:translateY(-50%);box-shadow:inset 0 0 0 .5px var(--sep)}
+.bp-perf::before{left:-29px}
+.bp-perf::after{right:-29px}
+.bp-bot{display:flex;align-items:flex-end;justify-content:space-between;padding:11px 20px 15px}
+.bp-bot .lbl{font:600 9.5px/1.5 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--label-3)}
+.bp-ref{font:650 17px/1.1 var(--mono);letter-spacing:.16em;color:var(--label)}
+.bp-share{display:flex;align-items:center;gap:5px;color:var(--blue);font-size:13px;font-weight:600}
+.bp-share .ic{width:15px;height:15px}
+/* 等寬數字 = 出發看板/票根質感 */
+.amt,.net,.val,.bp-ref{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
 /* ---------- inset-grouped 清單 ---------- */
 .group{margin:18px 16px 0}
 .group-hdr{
-  font-size:13px;color:var(--label-2);text-transform:uppercase;letter-spacing:.5px;
-  padding:0 16px 7px;font-weight:500;
+  font:600 11px/1 var(--mono);color:var(--label-2);text-transform:uppercase;letter-spacing:.16em;
+  padding:0 16px 7px;
 }
 .group-ftr{font-size:13px;color:var(--label-2);padding:7px 16px 0;line-height:1.35}
 .card{
   background:var(--card);border-radius:var(--radius-lg);overflow:hidden;
-  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
-  border:.5px solid var(--glass-edge);
-  box-shadow:inset 0 1px .5px var(--glass-hi),0 6px 22px rgba(0,0,0,.10);
+  border:.5px solid var(--sep);
+  box-shadow:0 1px 2px rgba(19,33,61,.05),0 10px 26px rgba(19,33,61,.07);
 }
-/* Chromium 限定: SVG feDisplacementMap 鏡頭折射 (Safari/Firefox 自動降級為純霜面玻璃) */
-html.fx-displace .card,
-html.fx-displace .btn,
-html.fx-displace .btn.tinted,
-html.fx-displace .tabbar,
-html.fx-displace .sheet{
-  -webkit-backdrop-filter:url(#liquid-glass) saturate(180%) blur(6px);
-  backdrop-filter:url(#liquid-glass) saturate(180%) blur(6px);
+/* Chromium 限定: SVG 鏡頭折射 — 只留給浮動 Tab Bar (玻璃 chrome) */
+html.fx-displace .tabbar{
+  -webkit-backdrop-filter:url(#liquid-glass) saturate(170%) blur(6px);
+  backdrop-filter:url(#liquid-glass) saturate(170%) blur(6px);
 }
 .cell{
   display:flex;align-items:center;gap:12px;min-height:48px;
@@ -185,27 +209,21 @@ html.fx-displace .sheet{
 .avatar.sm{width:28px;height:28px;font-size:12px}
 
 /* ---------- 按鈕 ---------- */
-/* iOS 26 .glassProminent: 半透明 tint 玻璃, 靠背景折射 (非實心、非果凍漸層) */
+/* 主要動作鈕: 實心 boarding 藍 */
 .btn{
   position:relative;isolation:isolate;
   display:flex;align-items:center;justify-content:center;gap:8px;
   width:100%;min-height:52px;padding:0 22px;border-radius:var(--r-pill);
-  background:var(--btn-glass);
-  -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
-  color:#fff;font-size:17px;font-weight:600;letter-spacing:.2px;
-  border:.5px solid rgba(255,255,255,.4);
-  box-shadow:
-    inset 0 1px .5px rgba(255,255,255,.5),     /* 頂緣 specular 細線 (非半身高光) */
-    0 4px 16px rgba(0,0,0,.12);                /* 中性柔影, 非藍色光暈 */
-  transition:opacity .15s,transform .14s var(--ease);
+  background:var(--blue);
+  color:#fff;font-size:17px;font-weight:650;letter-spacing:.2px;
+  box-shadow:0 6px 18px color-mix(in srgb, var(--blue) 30%, transparent);
+  transition:filter .15s,transform .14s var(--ease);
 }
-.btn:active{opacity:.86}   /* 縮放交給 GSAP 彈簧 */
-/* 次要鈕: 半透明玻璃 + 藍字 */
+.btn:active{filter:brightness(.94)}   /* 縮放交給 GSAP 彈簧 */
+/* 次要鈕: 淡主色填底 + 主色字 */
 .btn.tinted{
-  background:var(--glass-bg-strong);color:var(--blue);
-  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
-  border:.5px solid var(--glass-edge);
-  box-shadow:inset 0 1px .5px var(--glass-hi),var(--glass-shadow);
+  background:color-mix(in srgb, var(--blue) 12%, transparent);color:var(--blue);
+  border:.5px solid color-mix(in srgb, var(--blue) 26%, transparent);box-shadow:none;
 }
 .btn[disabled]{opacity:.4;pointer-events:none}
 .btn-wrap{padding:18px 16px 0}

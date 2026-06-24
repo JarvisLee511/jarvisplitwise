@@ -4,14 +4,14 @@
 // 若 GSAP 未載入或使用者要求減少動態, 全部降級為「直接到位」。
 // ============================================================
 const gsap = window.gsap;
-const { Draggable, InertiaPlugin, CustomEase } = window;
+const { Draggable, InertiaPlugin, CustomEase, SplitText } = window;
 const REDUCED = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const ON = !!gsap && !REDUCED;
 
 let EASE = 'power3.out';
 if (gsap) {
   try {
-    gsap.registerPlugin(Draggable, InertiaPlugin, CustomEase);
+    gsap.registerPlugin(Draggable, InertiaPlugin, CustomEase, SplitText);
     // iOS 預設彈簧近似 cubic-bezier(.32,.72,0,1)
     if (CustomEase) { CustomEase.create('ios', 'M0,0 C0.32,0.72 0,1 1,1'); EASE = 'ios'; }
   } catch (e) { /* 缺外掛就用內建 ease, 不致命 */ }
@@ -28,6 +28,24 @@ export function enterScreen(direction) {
     gsap.from(s, { xPercent: -26, duration: 0.44, ease: EASE, clearProps: 'transform' });
   } else {
     gsap.from(s, { opacity: 0, y: 8, duration: 0.4, ease: 'power2.out', clearProps: 'opacity,transform' });
+  }
+}
+
+// 登機證頭進場: 卡片浮起 + 目的地逐字升起 (SplitText 簽名動作)
+export function revealBoardingPass(scope) {
+  if (!ON) return;
+  const bp = (scope || document).querySelector('.bpass');
+  if (!bp) return;
+  gsap.from(bp, { opacity: 0, y: 16, duration: 0.55, ease: EASE, clearProps: 'opacity,transform' });
+  const dest = bp.querySelector('.bp-dest');
+  if (dest && SplitText) {
+    try {
+      const split = new SplitText(dest, { type: 'chars' });
+      gsap.from(split.chars, {
+        yPercent: 70, opacity: 0, duration: 0.55, stagger: 0.028, ease: 'power3.out',
+        delay: 0.08, onComplete: () => split.revert(),   // 還原 DOM, 避免影響後續 re-render
+      });
+    } catch (e) { /* SplitText 缺失就略過 */ }
   }
 }
 

@@ -28,6 +28,8 @@ const ICONS = {
   offline: '<path d="M5 12.5a8 8 0 0114 0"/><path d="M8.5 16a4 4 0 017 0"/><circle cx="12" cy="19.6" r="1"/><path d="M4 4l16 16"/>',
   moon: '<path d="M20 14.3A8 8 0 119.7 4 6.4 6.4 0 0020 14.3z"/>',
   sun: '<circle cx="12" cy="12" r="4.1"/><path d="M12 2.6v2.3M12 19.1v2.3M21.4 12h-2.3M4.9 12H2.6M18.65 5.35l-1.6 1.6M6.95 17.05l-1.6 1.6M18.65 18.65l-1.6-1.6M6.95 6.95l-1.6-1.6"/>',
+  plane: '<path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/>',
+  trash: '<path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13"/>',
 };
 function icon(name, cls = '') {
   const filled = name.endsWith('.fill');
@@ -216,9 +218,21 @@ function renderGroup() {
         ${themeBtnHTML()}
         <button class="nav-btn icon-only" id="addBtn" aria-label="新增消費">${icon('plus')}</button>
       </div>
-      <h1 class="large-title">${esc(state.group.name)}</h1>
-      <button class="subtitle" id="codeChip" aria-label="複製分享連結">
-        ${icon('share', 'ic-sm')}<span>代碼 ${state.code} · 點按複製連結</span></button>
+      <div class="bpass" id="codeChip" role="button" tabindex="0" aria-label="複製分享連結">
+        <div class="bp-top">
+          <div class="bp-eyebrow">
+            <span class="e-l">${icon('plane', 'fill ic')}<span class="eyebrow">Boarding Pass</span></span>
+            <span class="bp-cur">${esc(state.currency)}</span>
+          </div>
+          <div class="bp-dest">${esc(state.group.name)}</div>
+          <div class="bp-route">分帳行程 · ${state.members.length} 人同行</div>
+        </div>
+        <div class="bp-perf"></div>
+        <div class="bp-bot">
+          <div><div class="lbl">Booking Ref</div><div class="bp-ref">${state.code}</div></div>
+          <span class="bp-share">${icon('share', 'ic-sm')}分享</span>
+        </div>
+      </div>
       <div id="pane"></div>
     </div>
     <nav class="tabbar" role="tablist" aria-label="主導覽">
@@ -231,6 +245,7 @@ function renderGroup() {
   $('#backBtn').onclick = () => { location.hash = ''; };
   $('#addBtn').onclick = openExpenseForm;
   wireThemeToggle();
+  anim.revealBoardingPass();
   $('#codeChip').onclick = () => {
     navigator.clipboard?.writeText(location.origin + location.pathname + '#' + state.code);
     toast('已複製分享連結');
@@ -254,6 +269,9 @@ function renderGroup() {
 function renderPane(animate = false) {
   const pane = $('#pane');
   if (!pane) return;
+  // 登機證頭的「N 人同行」隨成員變動更新 (header 不重繪, 在這同步)
+  const rt = $('.bp-route');
+  if (rt) rt.textContent = `分帳行程 · ${state.members.length} 人同行`;
   const balances = computeBalances(state.members, state.expenses, state.settlements);
   if (state.activeTab === 'expenses') renderExpensesPane(pane);
   else if (state.activeTab === 'balances') renderBalancesPane(pane, balances, animate);
