@@ -349,7 +349,9 @@ function renderBalancesPane(pane, balances, animate) {
               data-from="${d.from}" data-to="${d.to}" data-amt="${d.amountCents}">標記已還</button>
           </div>
         </div>`).join('')}</div>`
-    : `<div class="card"><div class="allclear"><span class="ok">${icon('check')}</span>全部結清,沒有人欠錢</div></div>`;
+    : `<div class="card"><div class="allclear"><span class="ok">${icon('check')}</span>全部結清,沒有人欠錢
+        ${state.expenses.length ? `<div class="nudge-wrap"><button id="delGroupNudge" class="btn danger">${icon('trash', 'ic-sm')}行程結束,刪除群組</button></div>` : ''}
+      </div></div>`;
 
   pane.innerHTML = `
     <div class="group">
@@ -386,11 +388,25 @@ function renderBalancesPane(pane, balances, animate) {
   $$('.set-del', pane).forEach((b) => {
     b.onclick = async () => { await db.deleteSettlement(state.code, b.dataset.id); refresh(); };
   });
+  const nudge = $('#delGroupNudge', pane);
+  if (nudge) nudge.onclick = confirmAndDeleteGroup;
 
   if (animate) {
     anim.animBars(pane);
     if (!debts.length) anim.popCheck($('.allclear .ok', pane));
   }
+}
+
+// 刪除整個群組 (兩段確認; 影響同行所有人 + 無法復原)
+async function confirmAndDeleteGroup() {
+  if (!confirm(`確定刪除群組「${state.group.name}」?\n所有消費與結算紀錄將永久刪除、無法復原,同行的人也會一起失去存取。`)) return;
+  if (!confirm('再次確認:真的要永久刪除這個群組嗎?')) return;
+  try {
+    if (state.unsubscribe) { state.unsubscribe(); state.unsubscribe = null; }
+    await db.deleteGroup(state.code);
+    toast('群組已刪除');
+    location.hash = '';
+  } catch (e) { alert('刪除失敗,請稍後再試。'); }
 }
 
 // ---------- 成員 ----------
@@ -413,6 +429,11 @@ function renderMembersPane(pane) {
         </div>
       </div>
       <div class="group-ftr">已記錄在消費或結算中的成員無法移除,以免帳目對不平。</div>
+    </div>
+    <div class="group">
+      <div class="group-hdr">危險區</div>
+      <div class="btn-wrap" style="padding-top:0"><button id="delGroup" class="btn danger">${icon('trash', 'ic-sm')}刪除整個群組</button></div>
+      <div class="group-ftr">刪除後此群組的所有消費與結算紀錄將永久消失,同行的人也會失去存取。建議全部結清後再刪除。</div>
     </div>`;
   const add = async () => {
     const name = $('#newMember').value.trim(); if (!name) return;
@@ -421,6 +442,7 @@ function renderMembersPane(pane) {
   };
   $('#addMember').onclick = add;
   $('#newMember').addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
+  $('#delGroup').onclick = confirmAndDeleteGroup;
   $$('.del', pane).forEach((b) => {
     b.onclick = async () => {
       const id = b.dataset.id;

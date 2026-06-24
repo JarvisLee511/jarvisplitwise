@@ -41,6 +41,11 @@ const localBackend = {
     const g = lsLoad().groups[code];
     return g ? { code, name: g.name, currency: g.currency } : null;
   },
+  async deleteGroup(code) {
+    const db = lsLoad();
+    delete db.groups[code];
+    lsSave(db);
+  },
   async createGroup(name, currency) {
     const db = lsLoad();
     let code = genCode();
@@ -108,6 +113,11 @@ const cloudBackend = {
   async getGroup(code) {
     const { data } = await sb.from('groups').select('*').eq('code', code).maybeSingle();
     return data ? { code: data.code, name: data.name, currency: data.currency } : null;
+  },
+  async deleteGroup(code) {
+    // groups 刪除會經由 ON DELETE CASCADE 自動清掉 members/expenses/settlements
+    const { error } = await sb.from('groups').delete().eq('code', code);
+    if (error) throw error;
   },
   async createGroup(name, currency) {
     let code = genCode();
