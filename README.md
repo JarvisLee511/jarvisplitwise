@@ -1,5 +1,7 @@
 # 💸 Jarvisplitwise — 朋友出遊分帳
 
+**🌐 線上用:<https://jarvislee511.github.io/jarvisplitwise/>**
+
 一個跟 Splitwise 一樣的分帳 web app,但是:
 
 - ✅ **無筆數限制**(想記幾筆就幾筆)
@@ -50,16 +52,13 @@
 
 ---
 
-## 🌐 部署到網路上(讓朋友用手機開)
+## 🌐 部署
 
-這是純靜態網站,可免費丟到 GitHub Pages:
+已經部署好了,就是上面那個網址 —— GitHub Pages,`main` 分支 root 路徑,push 就更新。
 
-1. 開一個新的 GitHub repo(例如 `fairshare`),把整個資料夾內容 push 上去
-2. repo **Settings → Pages → Source 選 `main` branch / root** → Save
-3. 等一下,網址會是 `https://<你的帳號>.github.io/fairshare/`
-4. 手機開這個網址 → 瀏覽器選單「加到主畫面」就像 App 一樣
+手機開網址 → 瀏覽器選單「加到主畫面」就像 App 一樣。
 
-> 雲端模式的金鑰會包在前端(這是 Supabase 公開金鑰的正常用法,RLS 保護資料),所以 public repo 也 OK。
+> 雲端模式的金鑰包在前端(這是 Supabase 公開金鑰的正常用法,RLS 保護資料),所以 public repo 也 OK。
 
 ---
 
@@ -68,7 +67,7 @@
 因為用了 ES Module,不能直接雙擊開檔(會被瀏覽器 CORS 擋),要起一個小伺服器:
 
 ```bash
-cd fairshare
+cd jarvisplitwise
 python -m http.server 8000
 # 瀏覽器開 http://localhost:8000
 ```
@@ -78,7 +77,7 @@ python -m http.server 8000
 ## 檔案結構
 
 ```
-fairshare/
+jarvisplitwise/
 ├─ index.html              入口
 ├─ css/style.css           樣式 (手機友善)
 ├─ js/
