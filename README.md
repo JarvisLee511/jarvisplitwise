@@ -40,7 +40,7 @@
    (看到 Success 就建好資料表了)
 3. 左側 **Project Settings → API**,複製兩個值:
    - **Project URL**(像 `https://xxxx.supabase.co`)
-   - **anon public** key(很長一串 `eyJ...`)
+   - **Publishable key**(`sb_publishable_...`;舊專案叫 anon public key,一串 `eyJ...`)
 4. 打開 `js/supabase-config.js`,把那兩個值填進去:
    ```js
    export const SUPABASE_URL = 'https://xxxx.supabase.co';
@@ -48,7 +48,9 @@
    ```
 5. 重新整理網頁 → 看到「☁️ 雲端同步已啟用」就成功了。
 
-> anon key 放前端是 Supabase 設計上允許的(公開金鑰),真正的保護靠資料表的 RLS 規則(schema.sql 已設好)。群組代碼是隨機 6 碼,等同群組密碼,不知道代碼的人進不來。
+> 這把金鑰放前端是 Supabase 設計上允許的(公開金鑰),真正的保護靠資料表的 RLS 規則(schema.sql 已設好):前端每個請求都會帶上群組代碼(`x-group-code` header),資料庫只回傳、只允許寫入代碼相符的那個群組。所以就算拿到公開金鑰,也列不出、改不了別人的群組。群組代碼是隨機 6 碼,知道代碼(或分享連結)= 有權限。
+>
+> 已經在用舊版的專案:把最新的 `supabase/schema.sql` 整份再貼到 SQL Editor 執行一次即可升級(可重複執行,資料不動)。
 
 ---
 

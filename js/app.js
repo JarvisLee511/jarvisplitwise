@@ -1,7 +1,7 @@
 // ============================================================
 // app.js — UI 與互動邏輯 (iOS / Apple HIG 設計語言)
 // ============================================================
-import { db, USING_CLOUD } from './db.js?v=20261022a';
+import { db, USING_CLOUD } from './db.js?v=20261022b';
 import {
   toCents, fromCents, computeBalances, simplifyDebts, validateExpense,
 } from './split.js';

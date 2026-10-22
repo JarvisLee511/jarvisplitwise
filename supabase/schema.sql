@@ -1,5 +1,6 @@
 -- ============================================================
--- FairShare 資料庫結構 — 貼到 Supabase 的 SQL Editor 執行一次即可
+-- Jarvisplitwise 資料庫結構 — 貼到 Supabase 的 SQL Editor 按 Run 即可
+-- 可以重複執行: 新專案會建好全部; 舊專案會把權限規則更新成最新版, 資料不動
 -- ============================================================
 
 create table if not exists groups (
@@ -41,26 +42,41 @@ create index if not exists idx_expenses_group    on expenses(group_code);
 create index if not exists idx_settlements_group on settlements(group_code);
 
 -- ------------------------------------------------------------
--- Row Level Security
--- 這是「朋友分帳」用途, 不做帳號登入; 知道群組代碼 = 有權存取。
--- 因此開放匿名 (anon) 讀寫。代碼是隨機 6 碼, 等同群組密碼。
--- 若要更嚴格 (例如禁止刪別人資料), 可日後加 policy。
+-- Row Level Security: 知道群組代碼才看得到、改得到那個群組
+-- 這是「朋友分帳」用途, 不做帳號登入。前端每個請求都帶 x-group-code header,
+-- 資料庫只回傳 / 只允許寫入跟它相符的資料列; 沒帶代碼或代碼錯的請求什麼都看不到。
+-- (舊版是 anon 全開: 拿公開的 publishable key 就能列出、改動、刪除所有群組)
 -- ------------------------------------------------------------
 alter table groups      enable row level security;
 alter table members     enable row level security;
 alter table expenses    enable row level security;
 alter table settlements enable row level security;
 
+-- 這次請求帶的群組代碼 (PostgREST 會把 request headers 放進 request.headers)
+create or replace function public.request_group_code() returns text
+  language sql stable set search_path = ''
+  as $$ select nullif(nullif(current_setting('request.headers', true), '')::json ->> 'x-group-code', '') $$;
+grant execute on function public.request_group_code() to anon, authenticated;
+
+drop policy if exists anon_all on groups;
+drop policy if exists by_group_code on groups;
+create policy by_group_code on groups for all to anon, authenticated
+  using (code = (select public.request_group_code()))
+  with check (code = (select public.request_group_code()));
+
 do $$
 declare t text;
 begin
-  foreach t in array array['groups','members','expenses','settlements'] loop
+  foreach t in array array['members','expenses','settlements'] loop
     execute format('drop policy if exists anon_all on %I;', t);
-    execute format('create policy anon_all on %I for all to anon using (true) with check (true);', t);
+    execute format('drop policy if exists by_group_code on %I;', t);
+    execute format('create policy by_group_code on %I for all to anon, authenticated '
+                   'using (group_code = (select public.request_group_code())) '
+                   'with check (group_code = (select public.request_group_code()));', t);
+    -- 即時同步改走 Realtime broadcast (只送「有變動」通知、不帶資料), 資料表不必放進 realtime publication
+    if exists (select 1 from pg_publication_tables
+               where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
+      execute format('alter publication supabase_realtime drop table %I;', t);
+    end if;
   end loop;
 end $$;
-
--- 開啟即時同步 (Realtime): 讓任何人新增/刪除時其他人畫面自動更新
-alter publication supabase_realtime add table members;
-alter publication supabase_realtime add table expenses;
-alter publication supabase_realtime add table settlements;

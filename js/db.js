@@ -107,25 +107,38 @@ const localBackend = {
 
 // ============================================================
 // 雲端模式 (Supabase)
-// 對應 supabase/schema.sql 的資料表
+// 對應 supabase/schema.sql 的資料表。
+// 安全: 每個請求都帶 x-group-code header, 資料庫 RLS 只回傳/允許跟它相符的那個群組,
+//       所以公開的 publishable key 不能拿來列出或改動別的群組 (知道代碼 = 有權限)。
 // ============================================================
+const HDR = 'x-group-code';
+const CLIENT_ID = Math.random().toString(36).slice(2); // 分辨「自己發出」的變動通知
+const channels = {};
+// 通知同群組其他裝置「有變動, 請重抓」: 只帶寄件者 id, 不帶任何帳目內容。
+// 走 REST (httpSend) 而不是 websocket, 自己的即時連線默默斷掉時也送得出去
+function notify(code) {
+  channels[code]?.httpSend('changed', { from: CLIENT_ID }).catch(() => {});
+}
+
 const cloudBackend = {
   // 讀取失敗一律丟出 error: 連不上 ≠ 找不到 / 沒資料, 交給畫面顯示「連不上伺服器」
   async getGroup(code) {
-    const { data, error } = await sb.from('groups').select('*').eq('code', code).maybeSingle();
+    const { data, error } = await sb.from('groups').select('*').eq('code', code)
+      .setHeader(HDR, code).maybeSingle();
     if (error) throw error;
     return data ? { code: data.code, name: data.name, currency: data.currency } : null;
   },
   async deleteGroup(code) {
     // groups 刪除會經由 ON DELETE CASCADE 自動清掉 members/expenses/settlements
-    const { error } = await sb.from('groups').delete().eq('code', code);
+    const { error } = await sb.from('groups').delete().eq('code', code).setHeader(HDR, code);
     if (error) throw error;
+    notify(code);
   },
   async createGroup(name, currency) {
     let code = genCode();
     for (let tries = 0; tries < 5; tries++) {
       const { data, error } = await sb.from('groups')
-        .insert({ code, name, currency }).select().single();
+        .insert({ code, name, currency }).select().setHeader(HDR, code).single();
       if (!error) return { code: data.code, name: data.name, currency: data.currency };
       if (error.code !== '23505') throw error; // 只有撞代碼才重試; 沒網路等其他錯誤直接丟出
       code = genCode(); // 撞代碼了, 重產
@@ -134,16 +147,19 @@ const cloudBackend = {
   },
   async addMember(code, name) {
     const { data, error } = await sb.from('members')
-      .insert({ group_code: code, name }).select().single();
+      .insert({ group_code: code, name }).select().setHeader(HDR, code).single();
     if (error) throw error;
+    notify(code);
     return { id: data.id, name: data.name };
   },
   async removeMember(code, memberId) {
-    const { error } = await sb.from('members').delete().eq('id', memberId);
+    const { error } = await sb.from('members').delete().eq('id', memberId).setHeader(HDR, code);
     if (error) throw error;
+    notify(code);
   },
   async getMembers(code) {
-    const { data, error } = await sb.from('members').select('*').eq('group_code', code).order('created_at');
+    const { data, error } = await sb.from('members').select('*').eq('group_code', code)
+      .order('created_at').setHeader(HDR, code);
     if (error) throw error;
     return data.map((m) => ({ id: m.id, name: m.name }));
   },
@@ -151,48 +167,49 @@ const cloudBackend = {
     const { data, error } = await sb.from('expenses').insert({
       group_code: code, description: exp.description, amount_cents: exp.amountCents,
       paid_by: exp.paidBy, split_type: exp.splitType, participants: exp.participants,
-    }).select().single();
+    }).select().setHeader(HDR, code).single();
     if (error) throw error;
+    notify(code);
     return rowToExpense(data);
   },
   async deleteExpense(code, id) {
-    const { error } = await sb.from('expenses').delete().eq('id', id);
+    const { error } = await sb.from('expenses').delete().eq('id', id).setHeader(HDR, code);
     if (error) throw error;
+    notify(code);
   },
   async getExpenses(code) {
     const { data, error } = await sb.from('expenses').select('*').eq('group_code', code)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }).setHeader(HDR, code);
     if (error) throw error;
     return data.map(rowToExpense);
   },
   async addSettlement(code, s) {
     const { data, error } = await sb.from('settlements').insert({
       group_code: code, from_member: s.fromMember, to_member: s.toMember, amount_cents: s.amountCents,
-    }).select().single();
+    }).select().setHeader(HDR, code).single();
     if (error) throw error;
+    notify(code);
     return rowToSettlement(data);
   },
   async deleteSettlement(code, id) {
-    const { error } = await sb.from('settlements').delete().eq('id', id);
+    const { error } = await sb.from('settlements').delete().eq('id', id).setHeader(HDR, code);
     if (error) throw error;
+    notify(code);
   },
   async getSettlements(code) {
     const { data, error } = await sb.from('settlements').select('*').eq('group_code', code)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }).setHeader(HDR, code);
     if (error) throw error;
     return data.map(rowToSettlement);
   },
-  // 訂閱該群組所有資料表變動, 任何人改動都觸發 callback -> 重新載入畫面。
-  // 每次(重新)連上也觸發一次: 斷線期間的變動 realtime 不會補發, 要自己重抓
+  // 訂閱該群組的「有變動」廣播 (別台裝置寫入後發的), 收到就觸發 callback -> 重新載入畫面。
+  // 每次(重新)連上也觸發一次: 斷線期間的通知不會補發, 要自己重抓
   subscribe(code, callback) {
     const ch = sb.channel('grp_' + code);
-    ['members', 'expenses', 'settlements'].forEach((tbl) => {
-      ch.on('postgres_changes',
-        { event: '*', schema: 'public', table: tbl, filter: `group_code=eq.${code}` },
-        callback);
-    });
+    ch.on('broadcast', { event: 'changed' }, ({ payload }) => { if (payload?.from !== CLIENT_ID) callback(); });
     ch.subscribe((status) => { if (status === 'SUBSCRIBED') callback(); });
-    return () => sb.removeChannel(ch);
+    channels[code] = ch;
+    return () => { if (channels[code] === ch) delete channels[code]; sb.removeChannel(ch); };
   },
 };
 
