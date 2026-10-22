@@ -110,8 +110,10 @@ const localBackend = {
 // 對應 supabase/schema.sql 的資料表
 // ============================================================
 const cloudBackend = {
+  // 讀取失敗一律丟出 error: 連不上 ≠ 找不到 / 沒資料, 交給畫面顯示「連不上伺服器」
   async getGroup(code) {
-    const { data } = await sb.from('groups').select('*').eq('code', code).maybeSingle();
+    const { data, error } = await sb.from('groups').select('*').eq('code', code).maybeSingle();
+    if (error) throw error;
     return data ? { code: data.code, name: data.name, currency: data.currency } : null;
   },
   async deleteGroup(code) {
@@ -125,6 +127,7 @@ const cloudBackend = {
       const { data, error } = await sb.from('groups')
         .insert({ code, name, currency }).select().single();
       if (!error) return { code: data.code, name: data.name, currency: data.currency };
+      if (error.code !== '23505') throw error; // 只有撞代碼才重試; 沒網路等其他錯誤直接丟出
       code = genCode(); // 撞代碼了, 重產
     }
     throw new Error('建立群組失敗');
@@ -136,11 +139,13 @@ const cloudBackend = {
     return { id: data.id, name: data.name };
   },
   async removeMember(code, memberId) {
-    await sb.from('members').delete().eq('id', memberId);
+    const { error } = await sb.from('members').delete().eq('id', memberId);
+    if (error) throw error;
   },
   async getMembers(code) {
-    const { data } = await sb.from('members').select('*').eq('group_code', code).order('created_at');
-    return (data || []).map((m) => ({ id: m.id, name: m.name }));
+    const { data, error } = await sb.from('members').select('*').eq('group_code', code).order('created_at');
+    if (error) throw error;
+    return data.map((m) => ({ id: m.id, name: m.name }));
   },
   async addExpense(code, exp) {
     const { data, error } = await sb.from('expenses').insert({
@@ -151,12 +156,14 @@ const cloudBackend = {
     return rowToExpense(data);
   },
   async deleteExpense(code, id) {
-    await sb.from('expenses').delete().eq('id', id);
+    const { error } = await sb.from('expenses').delete().eq('id', id);
+    if (error) throw error;
   },
   async getExpenses(code) {
-    const { data } = await sb.from('expenses').select('*').eq('group_code', code)
+    const { data, error } = await sb.from('expenses').select('*').eq('group_code', code)
       .order('created_at', { ascending: false });
-    return (data || []).map(rowToExpense);
+    if (error) throw error;
+    return data.map(rowToExpense);
   },
   async addSettlement(code, s) {
     const { data, error } = await sb.from('settlements').insert({
@@ -166,14 +173,17 @@ const cloudBackend = {
     return rowToSettlement(data);
   },
   async deleteSettlement(code, id) {
-    await sb.from('settlements').delete().eq('id', id);
+    const { error } = await sb.from('settlements').delete().eq('id', id);
+    if (error) throw error;
   },
   async getSettlements(code) {
-    const { data } = await sb.from('settlements').select('*').eq('group_code', code)
+    const { data, error } = await sb.from('settlements').select('*').eq('group_code', code)
       .order('created_at', { ascending: false });
-    return (data || []).map(rowToSettlement);
+    if (error) throw error;
+    return data.map(rowToSettlement);
   },
-  // 訂閱該群組所有資料表變動, 任何人改動都觸發 callback -> 重新載入畫面
+  // 訂閱該群組所有資料表變動, 任何人改動都觸發 callback -> 重新載入畫面。
+  // 每次(重新)連上也觸發一次: 斷線期間的變動 realtime 不會補發, 要自己重抓
   subscribe(code, callback) {
     const ch = sb.channel('grp_' + code);
     ['members', 'expenses', 'settlements'].forEach((tbl) => {
@@ -181,7 +191,7 @@ const cloudBackend = {
         { event: '*', schema: 'public', table: tbl, filter: `group_code=eq.${code}` },
         callback);
     });
-    ch.subscribe();
+    ch.subscribe((status) => { if (status === 'SUBSCRIBED') callback(); });
     return () => sb.removeChannel(ch);
   },
 };

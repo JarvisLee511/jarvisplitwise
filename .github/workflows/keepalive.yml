@@ -1,0 +1,26 @@
+# Supabase 免費方案只要 7 天沒有資料庫請求就會暫停專案 (網址直接消失, app 整個不能用)。
+# 每天查一次資料表讓它保持清醒; 查不到時這個 workflow 會失敗, GitHub 會寄信通知。
+# 注意: public repo 連續 60 天沒有任何活動 (例如 commit), GitHub 會自動停掉排程 → 到 Actions 分頁按 Enable workflow 即可。
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: '23 14 * * *'   # 每天 14:23 UTC (避開整點, GitHub 排程在整點常延遲)
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query the groups table
+        env:
+          # 跟 js/supabase-config.js 同一組 (publishable key 本來就是公開金鑰)
+          SUPABASE_URL: https://sbokcusgnessfojvkvjm.supabase.co
+          SUPABASE_KEY: sb_publishable_qgQ3eXOmTqzL81QJbk4O6A_5QtDPAzp
+        run: |
+          curl -fsS --retry 3 --retry-delay 30 --retry-all-errors -o /dev/null \
+            -w "HTTP %{http_code} in %{time_total}s\n" \
+            "$SUPABASE_URL/rest/v1/groups?select=code&limit=1" -H "apikey: $SUPABASE_KEY"

@@ -1,7 +1,7 @@
 // ============================================================
 // app.js — UI 與互動邏輯 (iOS / Apple HIG 設計語言)
 // ============================================================
-import { db, USING_CLOUD } from './db.js';
+import { db, USING_CLOUD } from './db.js?v=20261022a';
 import {
   toCents, fromCents, computeBalances, simplifyDebts, validateExpense,
 } from './split.js';
@@ -98,9 +98,13 @@ async function route() {
     : hasGroup && !prevHasGroup ? 'forward'
       : !hasGroup && prevHasGroup ? 'back' : 'none';
   if (code) {
-    const g = await db.getGroup(code);
-    if (!g) { toast('找不到群組代碼 ' + code); prevHasGroup = undefined; location.hash = ''; return; }
-    await openGroup(g);
+    try {
+      const g = await db.getGroup(code);
+      if (!g) { toast('找不到群組代碼 ' + code); prevHasGroup = undefined; location.hash = ''; return; }
+      await openGroup(g);
+    } catch {
+      renderOffline(); return; // 連不上 ≠ 群組不存在: 保留網址, 讓人按重試
+    }
   } else {
     if (state.unsubscribe) { state.unsubscribe(); state.unsubscribe = null; }
     renderLanding();
@@ -109,6 +113,10 @@ async function route() {
   anim.enterScreen(dir);
 }
 window.addEventListener('hashchange', route);
+// 切回前景 / 網路恢復時重抓: iPhone 鎖屏或切 app 後 realtime 常默默斷線, 斷線期間的變動要補上
+function resync() { if ($('#pane') && document.visibilityState === 'visible') refresh(); }
+document.addEventListener('visibilitychange', resync);
+window.addEventListener('online', resync);
 // 大標題導覽列: 捲動時顯示緊湊標題 + 毛玻璃, 大標題隨捲動淡出
 let lastScrollY = 0;
 window.addEventListener('scroll', () => {
@@ -171,13 +179,37 @@ function renderLanding() {
       </div>
     </div>`;
 
-  $('#createBtn').onclick = async () => {
-    const g = await db.createGroup($('#newName').value.trim() || '我的群組', $('#newCur').value);
-    location.hash = g.code;
+  $('#createBtn').onclick = async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true; // 防連點: 網路慢時按兩下會建出兩個群組
+    try {
+      const g = await db.createGroup($('#newName').value.trim() || '我的群組', $('#newCur').value);
+      location.hash = g.code;
+    } catch {
+      toast('連不上伺服器,群組沒有建立。請檢查網路後再試一次');
+      btn.disabled = false;
+    }
   };
   const join = () => { const c = $('#joinCode').value.trim().toUpperCase(); if (c) location.hash = c; };
   $('#joinBtn').onclick = join;
   $('#joinCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
+  wireThemeToggle();
+}
+
+// 連不上伺服器 (沒網路 / 後端暫停): 跟「找不到群組」分開講, 帳本其實還在
+function renderOffline() {
+  $('#app').innerHTML = `
+    <div class="screen no-tabbar">
+      <div class="navbar"><span class="spacer"></span>${themeBtnHTML()}</div>
+      <div class="hero">
+        <h1>連不上伺服器</h1>
+        <p class="sub">帳本資料沒有不見,只是現在連不上。<br>請確認網路後再試一次。</p>
+      </div>
+      <div class="btn-wrap"><button id="retryBtn" class="btn">重試</button></div>
+      <div class="btn-wrap"><button id="homeBtn" class="btn tinted">回首頁</button></div>
+    </div>`;
+  $('#retryBtn').onclick = (e) => { e.currentTarget.disabled = true; e.currentTarget.textContent = '連線中…'; route(); };
+  $('#homeBtn').onclick = () => { location.hash = ''; };
   wireThemeToggle();
 }
 
@@ -189,16 +221,38 @@ async function openGroup(g) {
   await reloadData();
   renderGroup();
   if (state.unsubscribe) state.unsubscribe();
-  state.unsubscribe = db.subscribe(g.code, async () => { await reloadData(); renderPane(); });
+  state.unsubscribe = db.subscribe(g.code, () => refresh());
 }
+let loadSeq = 0, appliedSeq = 0;
 async function reloadData() {
+  const seq = ++loadSeq;
   const [members, expenses, settlements] = await Promise.all([
     db.getMembers(state.code), db.getExpenses(state.code), db.getSettlements(state.code),
   ]);
+  if (seq < appliedSeq) return; // 比已經套用的那次更早發出、卻更晚回來: 內容可能較舊, 丟掉
+  appliedSeq = seq;
   state.members = members; state.expenses = expenses; state.settlements = settlements;
 }
-// 本機模式: 變更後手動重載並重繪 (雲端模式靠 realtime 訂閱)
-async function refresh() { if (!USING_CLOUD) { await reloadData(); } renderPane(); }
+// 重抓並重繪 (內容沒變就不重繪, 背景同步不打斷動畫)。雲端模式也一樣要重抓:
+// 不能只等 realtime 推播, 手機鎖屏/切 app 後連線常默默斷掉。失敗時保留目前畫面, 回傳 false
+const dataSig = () => JSON.stringify([state.members, state.expenses, state.settlements]);
+async function refresh() {
+  const before = dataSig();
+  try { await reloadData(); } catch { return false; }
+  if (dataSig() !== before) renderPane();
+  return true;
+}
+// 寫入失敗 (多半是沒網路) 要講出來, 不能讓人以為已經存好
+async function write(fn) {
+  try { await fn(); return true; } catch {
+    toast('連不上伺服器,這次沒有成功。請檢查網路後再試一次');
+    return false;
+  }
+}
+// 寫入成功後馬上重抓, 自己記的帳立刻出現
+async function refreshAfterWrite() {
+  if (!(await refresh())) toast('已經存好了,但畫面還沒更新,請重新整理');
+}
 
 // ------------------------------------------------------------
 // 群組外殼: 大標題 + 內容 + 底部 Tab Bar
@@ -314,7 +368,7 @@ function renderExpensesPane(pane) {
   $$('.exp-del', pane).forEach((b) => {
     b.onclick = async () => {
       if (!confirm('刪除這筆消費?')) return;
-      await db.deleteExpense(state.code, b.dataset.id); refresh();
+      if (await write(() => db.deleteExpense(state.code, b.dataset.id))) refreshAfterWrite();
     };
   });
 }
@@ -379,14 +433,18 @@ function renderBalancesPane(pane, balances, animate) {
 
   $$('.settle', pane).forEach((b) => {
     b.onclick = async () => {
-      await db.addSettlement(state.code, {
+      b.disabled = true; // 防連點: 按兩下會記成兩筆還款
+      const ok = await write(() => db.addSettlement(state.code, {
         fromMember: b.dataset.from, toMember: b.dataset.to, amountCents: Number(b.dataset.amt),
-      });
-      toast('已記錄還款'); refresh();
+      }));
+      if (!ok) { b.disabled = false; return; }
+      toast('已記錄還款'); refreshAfterWrite();
     };
   });
   $$('.set-del', pane).forEach((b) => {
-    b.onclick = async () => { await db.deleteSettlement(state.code, b.dataset.id); refresh(); };
+    b.onclick = async () => {
+      if (await write(() => db.deleteSettlement(state.code, b.dataset.id))) refreshAfterWrite();
+    };
   });
   const nudge = $('#delGroupNudge', pane);
   if (nudge) nudge.onclick = confirmAndDeleteGroup;
@@ -435,9 +493,14 @@ function renderMembersPane(pane) {
       <div class="btn-wrap" style="padding-top:0"><button id="delGroup" class="btn danger">${icon('trash', 'ic-sm')}刪除整個群組</button></div>
       <div class="group-ftr">刪除後此群組的所有消費與結算紀錄將永久消失,同行的人也會失去存取。建議全部結清後再刪除。</div>
     </div>`;
+  let adding = false; // 防連點 / 連按 Enter 加出兩個同名成員
   const add = async () => {
-    const name = $('#newMember').value.trim(); if (!name) return;
-    await db.addMember(state.code, name); refresh();
+    const name = $('#newMember').value.trim(); if (!name || adding) return;
+    adding = true;
+    const ok = await write(() => db.addMember(state.code, name));
+    adding = false;
+    if (!ok) return; // 失敗時保留輸入的名字, 方便直接重試
+    await refreshAfterWrite();
     const inp = $('#newMember'); if (inp) inp.focus();
   };
   $('#addMember').onclick = add;
@@ -450,7 +513,7 @@ function renderMembersPane(pane) {
         || state.settlements.some((s) => s.fromMember === id || s.toMember === id);
       if (used) { alert('這位成員已出現在消費或結算紀錄中,無法移除。\n請先刪除相關紀錄,帳目才不會對不平。'); return; }
       if (!confirm('移除此成員?')) return;
-      await db.removeMember(state.code, id); refresh();
+      if (await write(() => db.removeMember(state.code, id))) refreshAfterWrite();
     };
   });
 }
@@ -571,7 +634,8 @@ function openExpenseForm() {
   $('#f_cancel', overlay).onclick = close;
   overlay.onclick = (e) => { if (e.target === overlay) close(); };
 
-  $('#f_save', overlay).onclick = async () => {
+  const saveBtn = $('#f_save', overlay);
+  saveBtn.onclick = async () => {
     const participants = [];
     state.members.forEach((m) => {
       const chk = $(`.pchk[data-id="${m.id}"]`, overlay);
@@ -587,8 +651,10 @@ function openExpenseForm() {
     };
     const v = validateExpense(exp);
     if (!v.ok) { toast(v.error); return; }
-    await db.addExpense(state.code, exp);
-    close(); refresh();
+    saveBtn.disabled = true; // 防連點: 網路慢時按兩下會記成兩筆
+    // 失敗時 sheet 不關, 填好的內容留著, 可以直接再按一次「新增」
+    if (!(await write(() => db.addExpense(state.code, exp)))) { saveBtn.disabled = false; return; }
+    close(); refreshAfterWrite();
   };
   setTimeout(() => $('#f_desc', overlay)?.focus(), 80);
 }
